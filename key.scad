@@ -1,14 +1,14 @@
 /* [Key] */
 
 //length in units of key
-key_length = 1;
+key_length = 1.5;
 //height in units of key. should remain 1 for most uses
 key_height = 1;
 //keycap type, [0:DCS Row 5, 1:DCS Row 1, 2:DCS Row 2, 3:DCS Row 3, 4:DCS Row 4, 5:DSA Row 3, 6:SA Row 1, 7:SA Row 2, 8:SA Row 3, 9:SA Row 4, 10:DCS Row 4 Spacebar, 11: g20 key (faked)]
-key_profile_index = 0;
+key_profile_index = 1;
 
 // keytop thickness, aka how many millimeters between the inside and outside of the top surface of the key
-keytop_thickness = 1;
+keytop_thickness = 2;
 
 // wall thickness, aka the thickness of the sides of the keycap. note this is the total thickness, aka 3 = 1.5mm walls
 wall_thickness = 3;
@@ -17,7 +17,7 @@ wall_thickness = 3;
 //enable brim for connector
 has_brim = 0;
 //brim radius. 11 ensconces normal keycap stem in normal keycap
-brim_radius = 11;
+brim_radius = 5;
 //brim depth
 brim_depth = .3;
 
@@ -25,11 +25,15 @@ brim_depth = .3;
 //whether stabilizer connectors are enabled
 stabilizers = 0;
 //stabilizer distance in mm
-stabilizer_distance = 50;
+stabilizer_distance = 12;
 
 /* [Dish] */
 // invert dishing. mostly for spacebar
 inverted_dish = 0;
+
+/* [Rotate Connectors] */
+// rotate the connectors 90 degrees. for if the switch is also rotated (ergodox 2x1 keys)
+rotate_connectors = 0;
 
 /* [Stem] */
 // cherry MX or Alps stem, or totally broken circular cherry stem [0..2]
@@ -346,13 +350,13 @@ module inside(){
 		// figuring that out cuz it's a rat's nest in here. second off
 		// due to how the minkowski_key function works that isn't working out right
 		// now. it's a simple change if is_minkowski is implemented though
-		shape(0, 0);
+		shape(0, 1.3,true);
 	}
 }
 
 module cherry_stem(){
 	// cross length
-	cross_length = 4.4;
+	cross_length = 4.7;
   //extra vertical cross length - the extra length of the up/down bar of the cross
   extra_vertical_cross_length = 1.1;
 	//dimensions of connector
@@ -362,13 +366,16 @@ module cherry_stem(){
 	extra_outer_cross_height = 1.0;
 	// dimensions of cross
 	// horizontal cross bar width
-	horizontal_cross_width = 1.4;
+	horizontal_cross_width = 1.3;
 	// vertical cross bar width
-	vertical_cross_width = 1.3;
+	vertical_cross_width = 1.2;
 	// cross depth, stem height is 3.4mm
-	cross_depth = 4;
+	cross_depth = 5;
 
-	difference(){
+    rotate([0,0,rotate_connectors ? 90 : 0]){
+    union(){
+        difference(){
+        
 		union(){
             if (stem_profile != 2){
                 translate([
@@ -389,12 +396,27 @@ module cherry_stem(){
             }
 			if (has_brim == 1){ cylinder(r=brim_radius,h=brim_depth); }
 		}
-		//the cross part of the steam
+		//the cross part of the stem
 		translate([0,0,(cross_depth)/2 + stem_inset]){
-	        cube([vertical_cross_width,cross_length+extra_vertical_cross_length,cross_depth], center=true );
-	        cube([cross_length,horizontal_cross_width,cross_depth], center=true );
-	    }
-	}
+                cube([vertical_cross_width,cross_length+extra_vertical_cross_length,cross_depth], center=true );
+                cube([cross_length,horizontal_cross_width,cross_depth], center=true );
+            }
+        }
+        if(stem_inset > 0.3){
+            supportheight = stem_inset - 0.3;
+                            translate([
+                        -(cross_length+extra_outer_cross_width+1)/2,
+                        -(cross_length+extra_outer_cross_height+1)/2,
+                        0
+                    ])
+            cube([
+                cross_length+extra_outer_cross_width+1,
+                cross_length+extra_outer_cross_height+1,
+                supportheight
+            ]);
+        }
+    }
+}
 }
 
 module alps_stem(){
@@ -425,8 +447,13 @@ module connector(has_brim){
 
 //stabilizer connectors
 module stabilizer_connectors(has_brim){
-	translate([stabilizer_distance,0,0]) connector(has_brim);
-	translate([-stabilizer_distance,0,0]) connector(has_brim);
+    if(key_height > 1){
+        translate([0,stabilizer_distance,0]) connector(has_brim);
+        translate([0,-stabilizer_distance,0]) connector(has_brim);
+    }else{
+        translate([stabilizer_distance,0,0]) connector(has_brim);
+        translate([-stabilizer_distance,0,0]) connector(has_brim);
+    }
 }
 
 
@@ -437,19 +464,23 @@ module stabilizer_connectors(has_brim){
 
 
 //general shape of key. used for inside and outside
-module shape(thickness_difference, depth_difference){
+module shape(thickness_difference, depth_difference, flatTop){
   if (inverted_dish == 1){
 		difference(){
 			union(){
-				shape_hull(thickness_difference, depth_difference, 1);
-				dish(depth_difference);
+				shape_hull(thickness_difference, depth_difference, 1,flatTop);
+                if(!flatTop){
+                    dish(depth_difference);
+                }
 			}
 			outside(thickness_difference);
 		}
 	} else{
 		difference(){
-			shape_hull(thickness_difference, depth_difference, 1);
-			dish(depth_difference);
+			shape_hull(thickness_difference, depth_difference, 1,flatTop);
+            if(!flatTop){
+                dish(depth_difference);
+            }
 		}
 	}
 }
@@ -459,7 +490,7 @@ module shape(thickness_difference, depth_difference){
 module outside(thickness_difference){
 	difference(){
 		cube([100000,100000,100000],center = true);
-		shape_hull(thickness_difference, 0, 2);
+		shape_hull(thickness_difference, 0, 2,false);
 	}
 }
 
@@ -467,7 +498,7 @@ module outside(thickness_difference){
 // modifier multiplies the height and top differences of the shape,
 // which is only used for dishing to cut the dish off correctly
 // height_difference used for keytop thickness
-module shape_hull(thickness_difference, depth_difference, modifier){
+module shape_hull(thickness_difference, depth_difference, modifier,flatTop){
 	hull(){
 		// bottom_key_width + (key_length -1) * unit is the correct length of the
 		// key. only 1u of the key should be bottom_key_width long; all others
@@ -475,8 +506,9 @@ module shape_hull(thickness_difference, depth_difference, modifier){
 		roundedRect([total_key_width - thickness_difference, total_key_height - thickness_difference, .001],1.5);
 
 		//height_difference outside of modifier because that doesnt make sense
+        tilt = flatTop ? 0 : top_tilt;
 		translate([0,top_skew,total_depth * modifier - depth_difference])
-		rotate([-top_tilt,0,0])
+		rotate([-tilt,0,0])
 		roundedRect([total_key_width - thickness_difference - width_difference * modifier, total_key_height - thickness_difference - height_difference * modifier, .001],1.5);
 	}
 }
@@ -572,14 +604,12 @@ module sideways_cylindrical_dish(depth_difference){
 	}
 }
 
-
-
 //actual full key with space carved out and keystem/stabilizer connectors
 module key(){
 	union(){
 		difference(){
-			shape(0, 0);
-			shape(wall_thickness, keytop_thickness);
+			shape(0, 0,false);
+			shape(wall_thickness, keytop_thickness,true);
 		}
 	}
 
@@ -594,6 +624,7 @@ module key(){
 difference(){
 	key();
 	// preview cube, for seeing inside the keycap
+    //translate([0,-50,0])
 	//cube([100,100,100]);
 }
 
