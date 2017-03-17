@@ -1,29 +1,28 @@
 /* [Key] */
 
-R1_1x1 =     [1  ,1  ,1,0,0,0,1,18];
-R2_1x1 =     [1  ,1  ,2,0,0,0,1,12];
-R3_1x1 =     [1  ,1  ,3,0,0,0,1,10];
-R4_1x1 =     [1  ,1  ,4,0,0,0,0,10];
-R4_1x1_inv = [1  ,1  ,4,0,1,0,0,10];
-R1_1x1p5 =   [1.5,1  ,1,0,0,0,1,2];
-R2_1x1p5 =   [1.5,1  ,2,0,0,0,1,2];
-R3_1x1p5 =   [1.5,1  ,3,0,0,0,1,2];
-R4_1x1p5 =   [1.5,1  ,4,0,0,0,0,2];
-R2_2x1 =     [1  ,2  ,2,1,0,1,1,0];
-R2_1p5x1 =   [1  ,1.5,2,0,0,1,1,2];
-R3_1p5x1 =   [1  ,1.5,3,0,0,1,1,2];
+R1_1x1 =     [1  ,1  ,1,0,0,0,1,0,18];
+R2_1x1 =     [1  ,1  ,2,0,0,0,1,0,12];
+R3_1x1 =     [1  ,1  ,3,0,0,0,1,0,8];
+R3_1x1_loc =     [1  ,1  ,3,0,0,0,1,1,8];
+R4_1x1 =     [1  ,1  ,4,0,0,0,0,0,10];
+R4_1x1_inv = [1  ,1  ,4,0,1,0,0,0,10];
+R1_1x1p5 =   [1.5,1  ,1,0,0,0,1,0,2];
+R2_1x1p5 =   [1.5,1  ,2,0,0,0,1,0,2];
+R3_1x1p5 =   [1.5,1  ,3,0,0,0,1,0,2];
+R4_1x1p5 =   [1.5,1  ,4,0,0,0,0,0,2];
+R2_2x1 =     [1  ,2  ,2,1,0,1,1,0,0];
+R2_1p5x1 =   [1  ,1.5,2,0,0,1,1,0,2];
+R3_1p5x1 =   [1  ,1.5,3,0,0,1,1,0,2];
 
-R1_2x1 =     [1  ,2  ,1,1,0,1,1,4];
-R5_1x1 =     [1  ,1  ,0,0,0,0,1,4];
+R1_2x1 =     [1  ,2  ,1,1,0,1,1,0,4];
+R5_1x1 =     [1  ,1  ,0,0,0,0,1,0,4];
 
-
-Keys = [R1_1x1,R2_1x1,R3_1x1,R4_1x1,R4_1x1_inv,R1_1x1p5,R2_1x1p5,R3_1x1p5,R4_1x1p5,R1_2x1,R2_1p5x1,R3_1p5x1,R5_1x1];
+Keys = [R3_1x1_loc];
+//Keys = [R1_1x1,R2_1x1,R3_1x1,R4_1x1,R4_1x1_inv,R1_1x1p5,R2_1x1p5,R3_1x1p5,R4_1x1p5,R1_2x1,R2_1p5x1,R3_1p5x1,R5_1x1];
 //Keys = [R1_2x1,R5_1x1];
 
-function K_ergodox_qty(x) = x[7];
-
-
-currentKey = Keys[0];
+function K_ergodox_qty(x) = x[8];
+function key_locator(x) = x[7];
 
 //length in units of key
 function key_length(x) = x[0];
@@ -481,8 +480,10 @@ module shape(k,thickness_difference, depth_difference, flatTop){
                 if(!flatTop){
                     dish(k,depth_difference);
                 }
+
 			}
 			outside(k,thickness_difference);
+
 		}
 	} else{
 		difference(){
@@ -510,6 +511,7 @@ module outside(k,thickness_difference){
 // which is only used for dishing to cut the dish off correctly
 // height_difference used for keytop thickness
 module shape_hull(k,thickness_difference, depth_difference, modifier,flatTop){
+    union(){
 	hull(){
 		// bottom_key_width + (key_length -1) * unit is the correct length of the
 		// key. only 1u of the key should be bottom_key_width long; all others
@@ -522,6 +524,7 @@ module shape_hull(k,thickness_difference, depth_difference, modifier,flatTop){
 		rotate([-tilt,0,0])
 		roundedRect([total_key_width(k) - thickness_difference - width_difference(k) * modifier, total_key_height(k) - thickness_difference - height_difference(k) * modifier, .001],1.5);
 	}
+    }
 }
 
 
@@ -625,6 +628,14 @@ module key(k){
 	}
 
 	connector(k,has_brim);
+    if(key_locator(k)==1){
+        difference(){
+        translate([0,-(total_key_height(k) - height_difference(k))/2 + 3.5,total_depth(k)-1.7])
+        sphere(r=2);
+        shape(k,0,0,false);
+        }
+    }
+
 
 	if (stabilizers(k) == 1){
 		stabilizer_connectors(k,has_brim);
